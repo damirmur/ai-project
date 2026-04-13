@@ -1,248 +1,353 @@
-# My Assistant AI - Local LLM Testing Tool
+# My Assistant AI - Локальное тестирование LLM моделей
 
-A Node.js/TypeScript project for testing local LLM models using `node-llama-cpp`. This tool loads GGUF models, runs test prompts, and collects performance metrics including response time, tokens per second, context window size, and memory mode information.
+Инструмент на Node.js/TypeScript для тестирования локальных LLM моделей с использованием `node-llama-cpp`. Проект загружает GGUF модели, генерирует тестовые промпты на русском языке, собирает метрики производительности (время ответа, токены/сек, размер контекста) и предоставляет автоматический тест-раннер для циклического тестирования нескольких моделей.
 
-## Table of Contents
+## Возможности
 
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Available Models](#available-models)
-- [Logging](#logging)
-- [Scripts](#scripts)
-- [Troubleshooting](#troubleshooting)
+- ✅ Загрузка и тестирование GGUF моделей через node-llama-cpp
+- ✅ Автоматический расчёт размера контекста на основе доступной памяти (ОЗУ - 1ГБ)
+- ✅ Стриминг ответов в реальном времени
+- ✅ Сбор метрик: время ответа, токены/сек, размер контекста
+- ✅ Автоматический тест-раннер для циклического тестирования всех моделей
+- ✅ Подробное логирование в файл и консоль
+- ✅ Полная типизация TypeScript
+- ✅ Тестовые вопросы на русском языке
 
-## Requirements
+## Оглавление
+
+- [Требования](#требования)
+- [Установка](#установка)
+- [Структура проекта](#структура-проекта)
+- [Конфигурация](#конфигурация)
+- [Использование](#использование)
+- [Тест-раннер](#тест-раннер)
+- [Доступные модели](#доступные-модели)
+- [Логирование](#логирование)
+- [Скрипты](#скрипты)
+- [Устранение проблем](#устранение-проблем)
+
+## Требования
 
 - **Node.js** >= 24.0.0
 - **npm** >= 10.0.0
-- **Operating System**: Linux, macOS, or Windows
-- **RAM**: Minimum 8GB (16GB recommended for larger models)
-- **Storage**: At least 10GB free space for models and build artifacts
-- **Models Directory**: `~/.local-llm-db/models/` must exist with GGUF model files
+- **Операционная система**: Linux, macOS или Windows
+- **ОЗУ**: Минимум 8ГБ (рекомендуется 16ГБ для больших моделей)
+- **Диск**: Минимум 10ГБ свободного места для моделей и сборки
+- **Директория моделей**: `~/.local-llm-db/models/` должна существовать с GGUF файлами
 
-### Model Files
+### Файлы моделей
 
-Place your GGUF model files in `~/.local-llm-db/models/`:
-- `qwen2.5-1.5b-instruct-q5_k_m.gguf` (default)
+Поместите GGUF файлы в `~/.local-llm-db/models/`:
+- `qwen2.5-1.5b-instruct-q5_k_m.gguf` (по умолчанию)
 - `qwen2.5-3b-instruct-q5_k_m.gguf`
 - `Qwen3.5-4B-Q5_K_S.gguf`
 - `gemma-4-E2B-it-UD-Q5_K_M.gguf`
 
-## Installation
+## Установка
 
-### 1. Clone or navigate to the project directory
+### 1. Клонирование репозитория
 
 ```bash
-cd /path/to/my-assistent-ai
+git clone git@github.com:damirmur/ai-project.git
+cd ai-project/projects/my-assistent-ai
 ```
 
-### 2. Install dependencies
+### 2. Установка зависимостей
 
 ```bash
 npm install
 ```
 
-The `postinstall` script will automatically build the node-llama-cpp library with CPU support (release b8771).
+Скрипт `postinstall` автоматически соберёт библиотеку node-llama-cpp с поддержкой CPU (release b8771).
 
-### 3. Configure environment variables
+### 3. Настройка переменных окружения
 
-Copy the example environment file and adjust as needed:
+Скопируйте файл с примером и отредактируйте:
 
 ```bash
 cp .env_example .env
 ```
 
-Edit `.env` to configure:
-- `DEFAULT_MODEL`: Default model to use
-- `LLM_MODELS_PATH`: Path to models directory
-- `AVAILABLE_MODELS`: Comma-separated list of available models
-- `LOG_FILE`: Log file path
+Отредактируйте `.env`:
+- `DEFAULT_MODEL`: Модель по умолчанию
+- `LLM_MODELS_PATH`: Путь к директории с моделями
+- `AVAILABLE_MODELS`: Список доступных моделей через запятую
+- `LOG_FILE`: Путь к файлу логов
 
-### 4. Build the project
+### 4. Сборка проекта
 
 ```bash
 npm run build
 ```
 
-## Project Structure
+## Структура проекта
 
 ```
 my-assistent-ai/
 ├── src/
 │   ├── config/
-│   │   └── llm.config.ts       # Configuration management
+│   │   └── llm.config.ts       # Управление конфигурацией, расчёт памяти
 │   ├── services/
-│   │   ├── llm.service.ts      # LLM model operations
-│   │   ├── log.service.ts      # Logging service
-│   │   └── question.service.ts # Question generation
+│   │   ├── llm.service.ts      # Операции с моделями (загрузка, генерация)
+│   │   ├── log.service.ts      # Логирование в файл и консоль
+│   │   └── question.service.ts # Генерация тестовых вопросов
 │   ├── types/
-│   │   ├── llm.types.ts        # Type definitions
-│   │   └── services.types.ts   # Service interfaces
-│   └── index.ts                # Main entry point
-├── .env                        # Environment variables
-├── .env_example                # Example environment file
-├── .gitignore                  # Git ignore rules
-├── package.json                # Project dependencies
-├── tsconfig.json               # TypeScript configuration
-├── README.md                   # This file
-└── ARCHITECTURE.md             # Architecture documentation
+│   │   ├── llm.types.ts        # Типы данных и интерфейсы моделей
+│   │   └── services.types.ts   # Интерфейсы сервисов
+│   ├── index.ts                # Точка входа (одиночный тест)
+│   └── test-runner.ts          # Автоматический тест-раннер (циклы)
+├── .env                        # Переменные окружения
+├── .env_example                # Пример переменных
+├── .gitignore                  # Правила игнорирования Git
+├── package.json                # Зависимости и скрипты
+├── tsconfig.json               # Конфигурация TypeScript
+├── test-runner.log             # Лог тест-раннера (создаётся автоматически)
+├── testllm.log                 # Лог приложения (создаётся автоматически)
+├── README.md                   # Этот файл
+└── ARCHITECTURE.md             # Архитектурная документация
 ```
 
-## Configuration
+## Конфигурация
 
-### Environment Variables
+### Переменные окружения
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DEFAULT_MODEL` | Default model filename | `Qwen3.5-4B-Q5_K_S.gguf` |
-| `LLM_MODELS_PATH` | Path to models directory | `~/.local-llm-db/models` |
-| `AVAILABLE_MODELS` | Comma-separated model list | `Qwen3.5-4B-Q5_K_S.gguf,gemma-4-E2B-it-UD-Q5_K_M.gguf` |
-| `LOG_FILE` | Log file path | `testllm.log` |
+| Переменная | Описание | По умолчанию |
+|------------|----------|--------------|
+| `DEFAULT_MODEL` | Модель по умолчанию | `qwen2.5-1.5b-instruct-q5_k_m.gguf` |
+| `LLM_MODELS_PATH` | Путь к директории моделей | `~/.local-llm-db/models` |
+| `AVAILABLE_MODELS` | Список моделей через запятую | `Qwen3.5-4B-Q5_K_S.gguf,gemma-4-E2B-it-UD-Q5_K_M.gguf,...` |
+| `LOG_FILE` | Путь к файлу логов | `testllm.log` |
 
-### Path Aliases
+### Автоматический расчёт размера контекста
 
-The project uses TypeScript path aliases for cleaner imports:
+Проект автоматически вычисляет оптимальный размер контекста на основе доступной оперативной памяти:
+
+```
+Доступная память (из /proc/meminfo) - 1ГБ = Память для контекста
+```
+
+- **Минимум**: 512 токенов
+- **Максимум**: от 4096 до 131072 токенов (зависит от памяти)
+- **Резерв**: 1ГБ оставляется для системы
+
+Пример вывода при запуске:
+```
+📊 Available memory: 6392MB
+📊 Memory for context: 5368MB
+📊 Context size: { min: 512, max: 131072 }
+```
+
+### Алиасы путей
+
+Проект использует алиасы TypeScript для чистых импортов:
 
 - `@/*` → `src/*`
 - `@config/*` → `src/config/*`
 - `@services/*` → `src/services/*`
-- `@types/*` → `src/types/*`
-- `@utils/*` → `src/utils/*`
+- `@types-def/*` → `src/types/*`
 
-## Usage
+## Использование
 
-### Run with default model
+### Запуск с моделью по умолчанию
 
 ```bash
 npm start
 ```
 
-### Run with specific model
+### Запуск с конкретной моделью
 
 ```bash
 npm start -- gemma-4-E2B-it-UD-Q5_K_M.gguf
 ```
 
-### Run in development mode
+### Режим разработки (с автоперезагрузкой)
 
 ```bash
 npm run dev
 ```
 
-### Build TypeScript
+### Компиляция TypeScript
 
 ```bash
 npm run build
 ```
 
-### Build node-llama-cpp
+### Сборка node-llama-cpp
 
-For CPU-only build:
+Для CPU (только процессор):
 ```bash
 npm run build:cpu
 ```
 
-For CUDA (GPU) build:
+Для CUDA (GPU ускорение):
 ```bash
 npm run build:cuda
 ```
 
-**Note**: The project uses ESM modules (`"type": "module"` in package.json) because `node-llama-cpp` requires ESM with top-level await support.
+**Примечание**: Проект использует ESM модули (`"type": "module"` в package.json), так как `node-llama-cpp` требует ESM с поддержкой top-level await.
 
-## Available Models
+## Тест-раннер
 
-The project supports the following models (place in `~/.local-llm-db/models/`):
+Автоматический инструмент для циклического тестирования всех доступных моделей.
 
-1. **qwen2.5-1.5b-instruct-q5_k_m.gguf** ⭐ (default)
-   - Size: ~1.5B parameters
-   - Quantization: Q5_K_M
-   - Fast inference, good for testing
+### Запуск
 
-2. **qwen2.5-3b-instruct-q5_k_m.gguf**
-   - Size: ~3B parameters
-   - Quantization: Q5_K_M
-   - Balance between speed and quality
-
-3. **Qwen3.5-4B-Q5_K_S.gguf**
-   - Size: ~4B parameters
-   - Quantization: Q5_K_S
-   - Higher quality responses
-
-4. **gemma-4-E2B-it-UD-Q5_K_M.gguf**
-   - Size: ~4B parameters (2B effective)
-   - Quantization: Q5_K_M
-   - Google's model architecture
-
-## Logging
-
-All operations are logged to `testllm.log` (configurable via `.env`).
-
-### Log Contents
-
-- Model loading progress
-- Model information
-- Test questions and responses
-- Performance metrics:
-  - Response time (ms)
-  - Tokens per second
-  - Context window size
-  - Memory mode
-  - GPU layers used
-
-### Log Format
-
-```
-[YYYY-MM-DDTHH:mm:ss.sssZ] [LEVEL] Message
+```bash
+npm run test:models
 ```
 
-## Scripts
+### Что делает тест-раннер
 
-| Script | Description |
-|--------|-------------|
-| `npm start` | Run the application |
-| `npm run dev` | Run in development mode with ts-node |
-| `npm run build` | Compile TypeScript to JavaScript |
-| `npm install` | Install dependencies and build node-llama-cpp |
-| `npm run build:cpu` | Build node-llama-cpp for CPU (release b8771) |
-| `npm run build:cuda` | Build node-llama-cpp for CUDA GPU (release b8771) |
-| `npm run postinstall` | Automatically runs after npm install |
+1. **Загружает все модели** из `AVAILABLE_MODELS`
+2. **Запускает их по очереди** без задержек
+3. **Проходит циклы** (по умолчанию 3 цикла)
+4. **Записывает в лог**:
+   - Информацию о загрузке каждой модели
+   - Вопросы и ответы моделей (в реальном времени)
+   - Метрики: время ответа, токены/сек, размер контекста
+   - Статус успеха/ошибки для каждого теста
+5. **Выводит итоговую статистику**:
+   - Таблица по моделям (успешно/провалено/среднее время)
+   - Общее время выполнения
+   - Количество циклов и моделей
 
-## Troubleshooting
+### Настройка количества циклов
 
-### Model not found
+Откройте `src/test-runner.ts` и измените константу:
 
-Ensure:
-1. The model file exists in `~/.local-llm-db/models/`
-2. The filename matches exactly (case-sensitive)
-3. File permissions allow reading
+```typescript
+const CYCLES = 3; // Измените на нужное количество
+```
 
-### Build errors with node-llama-cpp
+### Лог тест-раннера
 
-Try rebuilding:
+Все результаты записываются в `test-runner.log` в корне проекта. Файл обновляется перед каждым запуском.
+
+### Пример вывода
+
+```
+🚀 Запуск автоматического тестирования моделей LLM
+📊 Количество циклов: 3
+📦 Найдено моделей: 4
+
+────────────────────────────────────────────────────────────────────────────────
+🔄 ЗАГРУЗКА МОДЕЛИ: qwen2.5-1.5b-instruct-q5_k_m.gguf (Цикл 1/3)
+────────────────────────────────────────────────────────────────────────────────
+   📊 Available memory: 6392MB
+   📊 Context size: { min: 512, max: 131072 }
+   Model: qwen2.5-1.5b-instruct-q5_k_m.gguf
+   Question: Напиши поздравление мужчине с днем рождения на 50 слов
+
+💬 ОТВЕТ МОДЕЛИ (начало):
+С Днем Рождения! Этот день приносит вам не только радость...
+💬 ОТВЕТ МОДЕЛИ (конец)
+
+════════════════════════════════════════════════════════════════════════════════
+📊 РЕЗУЛЬТАТ ТЕСТА
+════════════════════════════════════════════════════════════════════════════════
+Модель:        qwen2.5-1.5b-instruct-q5_k_m.gguf
+Цикл:          1/3
+Статус:        ✅ Успешно
+Время теста:   8с
+
+❓ Вопрос:
+   Напиши поздравление мужчине с днем рождения на 50 слов
+
+⏱️  Время ответа:    4883ms
+🔢 Токенов/сек:     12.49
+📏 Размер контекста: 32768
+════════════════════════════════════════════════════════════════════════════════
+```
+
+## Доступные модели
+
+| Модель | Параметры | Квантование | Особенности |
+|--------|-----------|-------------|-------------|
+| `qwen2.5-1.5b-instruct-q5_k_m.gguf` ⭐ | 1.5B | Q5_K_M | Быстрый инференс, по умолчанию |
+| `qwen2.5-3b-instruct-q5_k_m.gguf` | 3B | Q5_K_M | Баланс скорости и качества |
+| `Qwen3.5-4B-Q5_K_S.gguf` | 4B | Q5_K_S | Высокое качество ответов |
+| `gemma-4-E2B-it-UD-Q5_K_M.gguf` | 4B (2B eff) | Q5_K_M | Архитектура Google Gemma |
+
+## Логирование
+
+Все операции записываются в `testllm.log` (настраивается через `.env`).
+
+### Содержание логов
+
+- Прогресс загрузки моделей
+- Информация о модели
+- Тестовые вопросы и ответы
+- Метрики производительности:
+  - Время ответа (мс)
+  - Токенов в секунду
+  - Размер контекстного окна
+  - Режим памяти
+  - Количество GPU слоёв
+
+### Формат записей
+
+```
+[YYYY-MM-DDTHH:mm:ss.sssZ] [LEVEL] Сообщение
+```
+
+### Пример
+
+```
+[2026-04-13T11:47:11.651Z] [INFO] Starting LLM Test
+[2026-04-13T11:47:11.651Z] [INFO] Model: qwen2.5-1.5b-instruct-q5_k_m.gguf
+[2026-04-13T11:47:20.157Z] [INFO] Question: Напиши поздравление мужчине с днем рождения на 50 слов
+[2026-04-13T11:47:23.124Z] [INFO] Response Time: 8506ms
+[2026-04-13T11:47:23.124Z] [INFO] Tokens/Second: 12.11
+[2026-04-13T11:47:23.124Z] [INFO] Context Size: 32768
+```
+
+## Скрипты
+
+| Скрипт | Описание |
+|--------|----------|
+| `npm start` | Запуск приложения с моделью по умолчанию |
+| `npm start -- <model>` | Запуск с конкретной моделью |
+| `npm run dev` | Режим разработки (tsx) |
+| `npm run build` | Компиляция TypeScript |
+| `npm run test:models` | Автоматический тест-раннер всех моделей |
+| `npm install` | Установка зависимостей + сборка node-llama-cpp |
+| `npm run build:cpu` | Сборка node-llama-cpp для CPU (release b8771) |
+| `npm run build:cuda` | Сборка node-llama-cpp для CUDA GPU (release b8771) |
+
+## Устранение проблем
+
+### Модель не найдена
+
+Убедитесь что:
+1. Файл модели существует в `~/.local-llm-db/models/`
+2. Имя файла точно совпадает (чувствительно к регистру)
+3. Файл имеет права на чтение
+
+### Ошибки сборки node-llama-cpp
+
+Попробуйте пересобрать:
 ```bash
 npm run build:cpu
 ```
 
-Or for GPU support:
+Или для GPU:
 ```bash
 npm run build:cuda
 ```
 
-### Out of memory
+### Нехватка памяти
 
-- Reduce context window size in configuration
-- Use a smaller quantized model
-- Close other applications to free RAM
+- Уменьшите размер контекста в конфигурации
+- Используйте модель с меньшим количеством параметров
+- Закройте другие приложения для освобождения ОЗУ
 
-### Slow performance
+### Медленная работа
 
-- Enable GPU acceleration with `npm run build:cuda`
-- Increase GPU layers in configuration
-- Use a model with fewer parameters
+- Включите GPU ускорение: `npm run build:cuda`
+- Увеличьте количество слоёв для GPU в конфигурации
+- Используйте модель с меньшим количеством параметров
 
-## License
+
+## Лицензия
 
 MIT
