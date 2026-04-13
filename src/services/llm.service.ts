@@ -7,6 +7,7 @@ import {
 } from 'node-llama-cpp';
 import type { IModelInfo, ContextSize } from '@types-def/llm.types.js';
 import type { ILLMService } from '@types-def/services.types.js';
+import os from 'os';
 
 export class LLMService implements ILLMService {
   private llama: Llama | null = null;
@@ -15,6 +16,7 @@ export class LLMService implements ILLMService {
   private session: LlamaChatSession | null = null;
   private modelInfo: IModelInfo | null = null;
   private contextSize: ContextSize = { min: 512, max: 8192 };
+  private actualContextSize: number = 8192; // Default to max for better performance
 
   /**
    * Load a model from the specified path
@@ -22,17 +24,27 @@ export class LLMService implements ILLMService {
   async loadModel(modelPath: string, contextSize?: ContextSize): Promise<void> {
     if (contextSize) {
       this.contextSize = contextSize;
+      // Use the max value from the range for actual context size
+      if (typeof contextSize === 'object' && 'min' in contextSize && 'max' in contextSize) {
+        this.actualContextSize = contextSize.max;
+      } else if (typeof contextSize === 'number') {
+        this.actualContextSize = contextSize;
+      }
     }
 
     // Reuse existing Llama instance or create a new one
     if (!this.llama) {
-      this.llama = await getLlama();
+      this.llama = await getLlama({
+        gpu: 'cuda'
+      });
+      console.log('✅ Llama initialized with CUDA GPU');
     }
 
     console.log(`Loading model: ${modelPath}`);
 
     this.model = await this.llama.loadModel({
-      modelPath
+      modelPath,
+      gpuLayers: 'auto' // Auto-detect how many layers fit in VRAM, rest on CPU
 /*       ,
       onLoadProgress: (progress: number) => {
         console.log(`Model loading progress: ${Math.round(progress * 100)}%`);
@@ -41,10 +53,14 @@ export class LLMService implements ILLMService {
 
     this.context = await this.model.createContext(
       {
-        contextSize: this.contextSize,
-        flashAttention: true // Выключен для стабильности Gemma-4
+        contextSize: 'auto', // Let node-llama-cpp determine optimal context size
+        flashAttention: true,
+        threads: Math.min(8, os.cpus().length), // 4-8 threads optimal for GPU
+        batchSize: 512 // Default batchSize for efficient GPU processing
       }
     );
+    // Update actualContextSize with the real value
+    this.actualContextSize = this.context.contextSize;
     this.session = new LlamaChatSession({
       contextSequence: this.context.getSequence(),
       systemPrompt: 'You are a useful assistant, answer in Russian.'
@@ -70,6 +86,13 @@ export class LLMService implements ILLMService {
    */
   getActualContextSize(): number | null {
     return this.context?.contextSize ?? null;
+  }
+
+  /**
+   * Get the number of layers offloaded to GPU
+   */
+  getGpuLayers(): number {
+    return this.model?.gpuLayers ?? 0;
   }
 
   /**

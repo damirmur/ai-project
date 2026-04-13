@@ -22,6 +22,12 @@ export interface ILLMService {
   getActualContextSize(): number | null;
 
   /**
+   * Get the number of layers offloaded to GPU
+   * @returns Number of GPU layers, or 0 if no model loaded or GPU not used
+   */
+  getGpuLayers(): number;
+
+  /**
    * Generate a response from the model
    * @param prompt The input prompt
    * @returns The model's response

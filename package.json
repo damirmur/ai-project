@@ -12,7 +12,7 @@
     "test:models": "tsx --tsconfig tsconfig.json src/test-runner.ts",
     "build:cpu": "node-llama-cpp source download --release b8771 --gpu false",
     "build:cuda": "node-llama-cpp source download --release b8771 --gpu cuda",
-    "postinstall": "npm run build:cpu"
+    "postinstall": "npm run build:cuda"
   },
   "keywords": [
     "llm",

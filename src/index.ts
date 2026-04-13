@@ -45,15 +45,15 @@ async function main(): Promise<void> {
     // Generate response with streaming
     const startTime = Date.now();
     let fullResponse = '';
-    
+
     console.log('\n--- MODEL RESPONSE START ---');
-    
+
     const response = await llmService.generateStreamingResponse(question, (token) => {
       // Stream token to terminal immediately
       process.stdout.write(token);
       fullResponse += token;
     });
-    
+
     console.log('\n--- MODEL RESPONSE END ---\n');
     
     const endTime = Date.now();
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
       tokensPerSecond,
       contextSize: actualContextSize,
       memoryMode: 'default',
-      gpuLayers: config.gpuLayers || 0,
+      gpuLayers: llmService.getGpuLayers(),
       timestamp: new Date()
     };
 

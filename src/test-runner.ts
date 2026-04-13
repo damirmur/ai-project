@@ -60,7 +60,7 @@ async function runModelTest(modelName: string, cycle: number): Promise<ModelTest
     testLog(`🔄 ЗАГРУЗКА МОДЕЛИ: ${modelName} (Цикл ${cycle}/${CYCLES})`);
     testLog(`${'─'.repeat(80)}`);
 
-    // Spawn the main application process (without shell to avoid security warning)
+    // Spawn the main application process (same as npm start)
     const child = spawn('node', [
       '-r', 'tsconfig-paths/register',
       'dist/index.js',

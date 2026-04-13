@@ -60,22 +60,31 @@ export function getConfig(modelName?: string): ILLMConfig {
   const modelPath = path.join(availableModels.modelsPath, selectedModel);
   const logFile = process.env.LOG_FILE || 'testllm.log';
 
-  // Calculate context size based on available memory
-  const availableMemoryMB = getAvailableMemoryMB();
-  // Reserve 1GB for system, use rest for context
-  const memoryForContextMB = Math.max(availableMemoryMB - 1024, 256); // At least 256MB
-  
-  // Estimate tokens: roughly 2KB per token in context (conservative estimate)
-  // This accounts for model weights + context
-  const maxContextSize = Math.floor((memoryForContextMB * 1024) / 2); // 2KB per token estimate
-  
-  // Set reasonable limits
-  const contextSizeMin = 512;
-  const contextSizeMax = Math.min(Math.max(maxContextSize, 4096), 131072); // Between 4K and 128K
+  // Read context size from environment variables
+  const envContextMin = process.env.CONTEXT_SIZE_MIN ? parseInt(process.env.CONTEXT_SIZE_MIN, 10) : null;
+  const envContextMax = process.env.CONTEXT_SIZE_MAX ? parseInt(process.env.CONTEXT_SIZE_MAX, 10) : null;
 
-  console.log(`📊 Available memory: ${availableMemoryMB}MB`);
-  console.log(`📊 Memory for context: ${memoryForContextMB}MB`);
-  console.log(`📊 Context size: { min: ${contextSizeMin}, max: ${contextSizeMax} }`);
+  let contextSizeMin: number;
+  let contextSizeMax: number;
+
+  if (envContextMin !== null && envContextMax !== null) {
+    // Use values from .env (assumes GPU is available for efficient context handling)
+    contextSizeMin = envContextMin;
+    contextSizeMax = envContextMax;
+    console.log(`📊 Using context size from .env: { min: ${contextSizeMin}, max: ${contextSizeMax} }`);
+  } else {
+    // Fallback: calculate based on available system memory (for CPU-only systems)
+    const availableMemoryMB = getAvailableMemoryMB();
+    const memoryForContextMB = Math.max(availableMemoryMB - 1024, 256); // Reserve 1GB for system
+    const maxContextSize = Math.floor((memoryForContextMB * 1024) / 2); // 2KB per token estimate
+
+    contextSizeMin = 512;
+    contextSizeMax = Math.min(Math.max(maxContextSize, 4096), 131072);
+    
+    console.log(`📊 No .env context size - calculating based on available memory`);
+    console.log(`📊 Available memory: ${availableMemoryMB}MB, Memory for context: ${memoryForContextMB}MB`);
+    console.log(`📊 Context size: { min: ${contextSizeMin}, max: ${contextSizeMax} }`);
+  }
 
   return {
     modelPath,
