@@ -1,0 +1,39 @@
+{
+  "name": "my-assistent-ai",
+  "version": "1.0.0",
+  "description": "Testing local LLM models using node-llama-cpp",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rm -rf dist && tsc && tsc-alias",
+    "start": "node -r tsconfig-paths/register dist/index.js",
+    "dev": "tsx --tsconfig tsconfig.json src/index.ts",
+    "test:models": "tsx --tsconfig tsconfig.json src/test-runner.ts",
+    "build:cpu": "node-llama-cpp source download --release b8771 --gpu false",
+    "build:cuda": "node-llama-cpp source download --release b8771 --gpu cuda",
+    "postinstall": "npm run build:cpu"
+  },
+  "keywords": [
+    "llm",
+    "llama",
+    "ai",
+    "node-llama-cpp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "node-llama-cpp": "3.18.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsc-alias": "^1.8.10",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
