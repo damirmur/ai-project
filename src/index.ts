@@ -24,7 +24,7 @@ async function main(): Promise<void> {
     logService.log(`Model Path: ${config.modelPath}`);
 
     // Load model
-    await llmService.loadModel(config.modelPath, config.contextSize);
+    await llmService.loadModel(config.modelPath, config.contextSize, config.gpuLayers, config.systemPrompt);
 
     // Get model info
     const modelInfo = llmService.getModelInfo();
@@ -38,9 +38,34 @@ async function main(): Promise<void> {
     // Get context size from service (actual from node-llama-cpp LlamaContext)
     const actualContextSize = llmService.getActualContextSize() ?? 0;
 
+    // Check for evaluation question (self-evaluation after cycles)
+    const evalQuestion = process.env.EVAL_QUESTION;
+
+    // Check if there's a pre-question (from test runner — about library knowledge)
+    const preQuestion = process.env.TEST_PRE_QUESTION;
+
     // Get random question
     const question = questionService.getRandomQuestion();
-    logService.log(`\nQuestion: ${question}`);
+
+    // Build combined prompt based on mode
+    let fullPrompt: string;
+    let displayQuestion: string;
+
+    if (evalQuestion) {
+      // SELF-EVALUATION mode: use evaluation prompt directly
+      fullPrompt = evalQuestion;
+      displayQuestion = '[SELF-EVALUATION] Анализ результатов тестирования';
+    } else if (preQuestion) {
+      // Normal test mode: pre-question + main question
+      fullPrompt = `${preQuestion}\n\n---\n\nА теперь ответь на основной вопрос:\n${question}`;
+      displayQuestion = `[Предварительный]\n${preQuestion}\n\n[Основной]\n${question}`;
+    } else {
+      // Single question mode
+      fullPrompt = question;
+      displayQuestion = question;
+    }
+
+    logService.log(`\n[Вопрос]: ${displayQuestion}`);
 
     // Generate response with streaming
     const startTime = Date.now();
@@ -48,14 +73,14 @@ async function main(): Promise<void> {
 
     console.log('\n--- MODEL RESPONSE START ---');
 
-    const response = await llmService.generateStreamingResponse(question, (token) => {
+    const response = await llmService.generateStreamingResponse(fullPrompt, (token) => {
       // Stream token to terminal immediately
       process.stdout.write(token);
       fullResponse += token;
     });
 
     console.log('\n--- MODEL RESPONSE END ---\n');
-    
+
     const endTime = Date.now();
     const responseTime = endTime - startTime;
 
@@ -64,10 +89,10 @@ async function main(): Promise<void> {
     const approximateTokens = trimmedResponse ? trimmedResponse.split(/\s+/).length : 0;
     const tokensPerSecond = responseTime > 0 ? (approximateTokens / responseTime) * 1000 : 0;
 
-    // Create test result
+    // Create test result — log the main question for reporting
     const testResult: ITestResult = {
       modelName: config.modelName,
-      question,
+      question: displayQuestion,
       response,
       responseTime,
       tokensPerSecond,

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execSync } from 'child_process';
 import type { ILLMConfig, IAvailableModels } from '@types-def/llm.types.js';
+import { getGpuConfig } from '@services/detect-gpu.service.js';
 
 // Load environment variables
 dotenv.config();
@@ -86,12 +87,19 @@ export function getConfig(modelName?: string): ILLMConfig {
     console.log(`📊 Context size: { min: ${contextSizeMin}, max: ${contextSizeMax} }`);
   }
 
+  // Detect GPU configuration
+  const gpuConfig = getGpuConfig();
+
+  // Read system prompt from environment
+  const systemPrompt = process.env.SYSTEM_PROMPT || 'You are a useful assistant, answer in Russian.';
+
   return {
     modelPath,
     modelName: selectedModel,
     logFilePath: logFile,
     contextSize: { min: contextSizeMin, max: contextSizeMax },
-    gpuLayers: undefined, // Use default
-    enableLogging: true
+    gpuLayers: gpuConfig.gpuLayers,
+    enableLogging: true,
+    systemPrompt
   };
 }

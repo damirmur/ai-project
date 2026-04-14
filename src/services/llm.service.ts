@@ -7,7 +7,9 @@ import {
 } from 'node-llama-cpp';
 import type { IModelInfo, ContextSize } from '@types-def/llm.types.js';
 import type { ILLMService } from '@types-def/services.types.js';
+import { getGpuConfig } from './detect-gpu.service.js';
 import os from 'os';
+import fs from 'fs';
 
 export class LLMService implements ILLMService {
   private llama: Llama | null = null;
@@ -17,11 +19,12 @@ export class LLMService implements ILLMService {
   private modelInfo: IModelInfo | null = null;
   private contextSize: ContextSize = { min: 512, max: 8192 };
   private actualContextSize: number = 8192; // Default to max for better performance
+  private detectedGpuLayers: number = 0;
 
   /**
    * Load a model from the specified path
    */
-  async loadModel(modelPath: string, contextSize?: ContextSize): Promise<void> {
+  async loadModel(modelPath: string, contextSize?: ContextSize, gpuLayersOverride?: number | 'auto', systemPrompt?: string): Promise<void> {
     if (contextSize) {
       this.contextSize = contextSize;
       // Use the max value from the range for actual context size
@@ -32,24 +35,40 @@ export class LLMService implements ILLMService {
       }
     }
 
-    // Reuse existing Llama instance or create a new one
-    if (!this.llama) {
-      this.llama = await getLlama({
-        gpu: 'cuda'
-      });
-      console.log('✅ Llama initialized with CUDA GPU');
+    // Detect GPU configuration
+    let modelSizeMB = 0;
+    try {
+      const stats = fs.statSync(modelPath);
+      modelSizeMB = Math.floor(stats.size / (1024 * 1024));
+    } catch (error) {
+      // Ignore if can't get model size
     }
 
-    console.log(`Loading model: ${modelPath}`);
+    const gpuConfig = getGpuConfig(modelSizeMB);
+    const gpuLayers = gpuLayersOverride ?? gpuConfig.gpuLayers;
+    this.detectedGpuLayers = typeof gpuLayers === 'number' ? gpuLayers : 0;
+
+    // Reuse existing Llama instance or create a new one
+    if (!this.llama) {
+      console.log(`🔧 GPU configuration: ${gpuConfig.gpu ? gpuConfig.gpu : 'CPU'}, Layers: ${gpuLayers}`);
+      
+      this.llama = await getLlama({
+        gpu: gpuConfig.gpu
+      });
+      
+      if (gpuConfig.gpu) {
+        console.log(`✅ Llama initialized with ${gpuConfig.gpu.toUpperCase()} GPU`);
+      } else {
+        console.log('⚠️  Llama initialized in CPU mode');
+      }
+    }
+
+    console.log(`Loading model: ${modelPath} (${modelSizeMB}MB)`);
 
     this.model = await this.llama.loadModel({
       modelPath,
-      gpuLayers: 'auto' // Auto-detect how many layers fit in VRAM, rest on CPU
-/*       ,
-      onLoadProgress: (progress: number) => {
-        console.log(`Model loading progress: ${Math.round(progress * 100)}%`);
-      }
- */    });
+      gpuLayers: gpuLayers
+    });
 
     this.context = await this.model.createContext(
       {
@@ -63,7 +82,7 @@ export class LLMService implements ILLMService {
     this.actualContextSize = this.context.contextSize;
     this.session = new LlamaChatSession({
       contextSequence: this.context.getSequence(),
-      systemPrompt: 'You are a useful assistant, answer in Russian.'
+      systemPrompt: systemPrompt || 'You are a useful assistant, answer in Russian.'
     });
 
     this.modelInfo = {
@@ -92,7 +111,8 @@ export class LLMService implements ILLMService {
    * Get the number of layers offloaded to GPU
    */
   getGpuLayers(): number {
-    return this.model?.gpuLayers ?? 0;
+    // Return detected GPU layers instead of model's gpuLayers
+    return this.detectedGpuLayers;
   }
 
   /**

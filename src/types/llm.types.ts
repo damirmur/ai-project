@@ -15,10 +15,12 @@ export interface ILLMConfig {
   logFilePath: string;
   /** Maximum context window size */
   contextSize?: ContextSize;
-  /** Number of layers to offload to GPU (-1 for all) */
-  gpuLayers?: number;
+  /** Number of layers to offload to GPU (-1 for all, 'auto' for automatic) */
+  gpuLayers?: number | 'auto';
   /** Enable logging */
   enableLogging: boolean;
+  /** System prompt for the model */
+  systemPrompt?: string;
 }
 
 /**

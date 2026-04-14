@@ -10,9 +10,12 @@
     "start": "node -r tsconfig-paths/register dist/index.js",
     "dev": "tsx --tsconfig tsconfig.json src/index.ts",
     "test:models": "tsx --tsconfig tsconfig.json src/test-runner.ts",
+    "test:sv": "tsx --tsconfig tsconfig.json src/test-sv.ts",
     "build:cpu": "node-llama-cpp source download --release b8771 --gpu false",
     "build:cuda": "node-llama-cpp source download --release b8771 --gpu cuda",
-    "postinstall": "npm run build:cuda"
+    "build:vulkan": "node-llama-cpp source download --release b8771 --gpu vulkan",
+    "build:auto": "node -e \"const {execSync} = require('child_process'); try { execSync('nvidia-smi', {stdio: 'ignore'}); console.log('GPU detected, building with CUDA'); execSync('npm run build:cuda', {stdio: 'inherit'}); } catch { try { execSync('which glslc', {stdio: 'ignore'}); console.log('Vulkan SDK detected, building with Vulkan'); execSync('npm run build:vulkan', {stdio: 'inherit'}); } catch { console.log('No GPU SDK detected, building with CPU'); execSync('npm run build:cpu', {stdio: 'inherit'}); } } }\"",
+    "postinstall": "npm run build:auto"
   },
   "keywords": [
     "llm",

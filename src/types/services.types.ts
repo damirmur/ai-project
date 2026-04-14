@@ -6,8 +6,10 @@ export interface ILLMService {
    * Load a model from the specified path
    * @param modelPath Path to the model file
    * @param contextSize Optional context size configuration
+   * @param gpuLayers Optional GPU layers override (number or 'auto')
+   * @param systemPrompt Optional system prompt for the model
    */
-  loadModel(modelPath: string, contextSize?: ContextSize): Promise<void>;
+  loadModel(modelPath: string, contextSize?: ContextSize, gpuLayers?: number | 'auto', systemPrompt?: string): Promise<void>;
 
   /**
    * Get the current context size configuration
@@ -101,6 +103,12 @@ export interface IQuestionService {
    * @returns A random question
    */
   getRandomQuestion(): string;
+
+  /**
+   * Get all available questions
+   * @returns Array of all questions
+   */
+  getAllQuestions(): string[];
 }
 
 import type { IModelInfo, ITestResult, ContextSize } from '@types-def/llm.types.js';
